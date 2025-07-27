@@ -2,7 +2,7 @@
 // because of the CDN scripts in index.html. No 'import' statements needed here.
 
 const TMDB_API_KEY = '34d1a1bd431dc14e9243d534340f360b'; // Your TMDB API Key
-const TMDB_READ_ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNGQxYTFiZDQzMWRjMTRlOTI0M2Q1MzQzNDBmMzYwYiIsIm5iZiI6MTY5Njk5ODkyOS4wNzksInN1YiI6IjY1MjYyNjExMDcyMTY2NDViNmRhZmU2NyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.dMDHJ8cb6eWhumAkM8nt_cArUkaLkZZbHJi7R4eI0i8'; // Your TMDB API Read Access Token
+const TMDB_READ_ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNGQxYTFiZDQzMWRjMTRlOTI0M2Q1MzQzNDBmMzYwYiIsIm5iZiI6MTY5Njk5ODg5Mi4wNzksInN1YiI6IjY1MjYyNjExMDcyMTY2NDViNmRhZmU2NyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.dMDHJ8cb6eWhumAkM8nt_cArUkaLkZZbHJi7R4eI0i8'; // Your TMDB API Read Access Token
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
@@ -32,7 +32,7 @@ const App = () => {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [selectedYear, setSelectedYear] = React.useState(''); // State for year filter (empty string for "All Years")
-  const [isMonthlySelection, setIsMonthlySelection] = React.useState(false); // State to track if "Based on Month" is selected
+  const [isMonthlySelection, setIsMonthlySelection] = React.useState(true); // Default to true for "Based on Month"
 
   // Get current month and its corresponding genre name for display
   const currentMonthNum = new Date().getMonth() + 1; // getMonth is 0-indexed
@@ -62,13 +62,26 @@ const App = () => {
       }
       const data = await response.json();
       setGenres(data.genres);
-      // Set a default genre if available and immediately randomize movies for it
-      if (data.genres.length > 0) {
-        // No default monthly selection on initial load, just set first genre
-        const defaultGenreId = data.genres[0].id;
-        setSelectedGenreId(defaultGenreId);
-        fetchRandomMovies(defaultGenreId, selectedYear);
+
+      // Set default to "Based on Month" on initial load
+      const monthlyGenreName = MONTH_GENRE_MAP[currentMonthNum];
+      const monthlyGenre = data.genres.find(g => g.name === monthlyGenreName);
+
+      if (monthlyGenre) {
+        setSelectedGenreId(monthlyGenre.id); // Set the actual genre ID
+        fetchRandomMovies(monthlyGenre.id, selectedYear);
+      } else {
+        // Fallback if monthly genre not found (shouldn't happen with correct mapping)
+        setError(`Could not find genre ID for month ${currentMonthNum} (${monthlyGenreName}). Defaulting to first genre.`);
+        if (data.genres.length > 0) {
+            setSelectedGenreId(data.genres[0].id);
+            fetchRandomMovies(data.genres[0].id, selectedYear);
+        } else {
+            setError("No genres available from TMDB.");
+        }
       }
+      setIsMonthlySelection(true); // Ensure this is set to true as it's the default
+
     } catch (err) {
       console.error("Failed to fetch genres:", err);
       setError("Failed to load genres. Please check your API key/token and network connection.");
@@ -193,7 +206,7 @@ const App = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white font-inter p-4 sm:p-8 flex flex-col items-center">
       {/* The style tag with @import is now in style.css */}
       <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-4 text-center drop_shadow-lg">
-        BEBU’S MOVIES RECOMMENDATION
+        Movie Explorer
       </h1>
 
       {/* New text display for current month and genre */}
@@ -314,10 +327,10 @@ const App = () => {
 
       <footer className="mt-12 text-gray-500 text-sm text-center">
         <p>
-          Powered by The Movie Database (TMDB) API
+          Powered by The Movie Database (TMDB) API.
         </p>
         <p>
-           Created By Joshua Cambal
+          Remember to replace `TMDB_API_KEY` in the code with your actual key!
         </p>
       </footer>
     </div>
