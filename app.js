@@ -206,7 +206,7 @@ const App = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white font-inter p-4 sm:p-8 flex flex-col items-center">
       {/* The style tag with @import is now in style.css */}
       <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-4 text-center drop_shadow-lg">
-        Movie Explorer
+        BEBU’S MOVIES RECOMMENDATION
       </h1>
 
       {/* New text display for current month and genre */}
@@ -330,7 +330,7 @@ const App = () => {
           Powered by The Movie Database (TMDB) API.
         </p>
         <p>
-          Remember to replace `TMDB_API_KEY` in the code with your actual key!
+          Created by JshMaxer. All rights reserved.
         </p>
       </footer>
     </div>
