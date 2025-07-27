@@ -32,7 +32,7 @@ const App = () => {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [selectedYear, setSelectedYear] = React.useState(''); // State for year filter (empty string for "All Years")
-  const [isMonthlySelection, setIsMonthlySelection] = React.useState(true); // Default to true for "Based on Month"
+  const [selectedMovieType, setSelectedMovieType] = React.useState('monthly'); // New state: 'genre', 'monthly', or 'upcoming'
 
   // Get current month and its corresponding genre name for display
   const currentMonthNum = new Date().getMonth() + 1; // getMonth is 0-indexed
@@ -49,6 +49,67 @@ const App = () => {
     'Content-Type': 'application/json',
   };
 
+  // Function to fetch and display movies based on type (genre, monthly, upcoming) and year
+  const fetchMovies = async (type, genreId, year) => {
+    setLoading(true);
+    setError(null);
+    setMovies([]); // Clear previous movies
+
+    const yearQueryParam = year ? `&primary_release_year=${year}` : '';
+
+    try {
+      if (type === 'upcoming') {
+        // For upcoming, fetch from /movie/upcoming and show all results (no randomization)
+        const response = await fetch(`${TMDB_BASE_URL}/movie/upcoming?api_key=${TMDB_API_KEY}${yearQueryParam}`, { headers: tmdbHeaders });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setMovies(data.results); // Show all upcoming movies from the first page
+
+      } else if (type === 'genre' || type === 'monthly') {
+        if (!genreId) { // Ensure genreId is present for genre/monthly types
+            setLoading(false);
+            return;
+        }
+        // Fetch popular movies for the genre (first few pages for more variety)
+        const popularResponse = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=popularity.desc&page=1&page=2${yearQueryParam}`, {
+          headers: tmdbHeaders,
+        });
+        // Fetch top-rated movies for the genre (first few pages)
+        const topRatedResponse = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=100${yearQueryParam}&page=1&page=2`, {
+          headers: tmdbHeaders,
+        });
+
+        if (!popularResponse.ok || !topRatedResponse.ok) {
+          throw new Error(`HTTP error! One or both fetches failed.`);
+        }
+
+        const popularData = await popularResponse.json();
+        const topRatedData = await topRatedResponse.json();
+
+        // Combine results, remove duplicates (by ID), and shuffle for genre/monthly
+        const combinedMovies = [...popularData.results, ...topRatedData.results];
+        const uniqueMovies = Array.from(new Map(combinedMovies.map(movie => [movie.id, movie])).values());
+
+        // Simple shuffle function
+        for (let i = uniqueMovies.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [uniqueMovies[i], uniqueMovies[j]] = [uniqueMovies[j], uniqueMovies[i]];
+        }
+
+        // Take the first 3 random movies
+        setMovies(uniqueMovies.slice(0, 3));
+      }
+
+    } catch (err) {
+      console.error("Failed to fetch movies:", err);
+      setError("Failed to fetch movies. Try again or check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Function to fetch genres from TMDB API
   const fetchGenres = async () => {
     try {
@@ -63,80 +124,29 @@ const App = () => {
       const data = await response.json();
       setGenres(data.genres);
 
-      // Set default to "Based on Month" on initial load
+      // Default to "Based on Month" on initial load
       const monthlyGenreName = MONTH_GENRE_MAP[currentMonthNum];
       const monthlyGenre = data.genres.find(g => g.name === monthlyGenreName);
 
       if (monthlyGenre) {
         setSelectedGenreId(monthlyGenre.id); // Set the actual genre ID
-        fetchRandomMovies(monthlyGenre.id, selectedYear);
+        setSelectedMovieType('monthly'); // Set the movie type
+        fetchMovies('monthly', monthlyGenre.id, selectedYear);
       } else {
         // Fallback if monthly genre not found (shouldn't happen with correct mapping)
         setError(`Could not find genre ID for month ${currentMonthNum} (${monthlyGenreName}). Defaulting to first genre.`);
         if (data.genres.length > 0) {
             setSelectedGenreId(data.genres[0].id);
-            fetchRandomMovies(data.genres[0].id, selectedYear);
+            setSelectedMovieType('genre'); // Fallback to genre type
+            fetchMovies('genre', data.genres[0].id, selectedYear);
         } else {
             setError("No genres available from TMDB.");
         }
       }
-      setIsMonthlySelection(true); // Ensure this is set to true as it's the default
 
     } catch (err) {
       console.error("Failed to fetch genres:", err);
       setError("Failed to load genres. Please check your API key/token and network connection.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Function to fetch and randomize popular and top-rated movies for a given genre and year
-  const fetchRandomMovies = async (genreId, year) => {
-    if (!genreId) {
-        setMovies([]);
-        setLoading(false);
-        return;
-    }
-    setLoading(true);
-    setError(null);
-
-    // Only add primary_release_year if a year is actually selected
-    const yearQueryParam = year ? `&primary_release_year=${year}` : '';
-
-    try {
-      // Fetch popular movies for the genre (first few pages for more variety)
-      const popularResponse = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=popularity.desc&page=1&page=2${yearQueryParam}`, {
-        headers: tmdbHeaders,
-      });
-      // Fetch top-rated movies for the genre (first few pages)
-      const topRatedResponse = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=100${yearQueryParam}&page=1&page=2`, {
-        headers: tmdbHeaders,
-      });
-
-
-      if (!popularResponse.ok || !topRatedResponse.ok) {
-        throw new Error(`HTTP error! One or both fetches failed.`);
-      }
-
-      const popularData = await popularResponse.json();
-      const topRatedData = await topRatedResponse.json();
-
-      // Combine results, remove duplicates (by ID), and shuffle
-      const combinedMovies = [...popularData.results, ...topRatedData.results];
-      const uniqueMovies = Array.from(new Map(combinedMovies.map(movie => [movie.id, movie])).values());
-
-      // Simple shuffle function
-      for (let i = uniqueMovies.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [uniqueMovies[i], uniqueMovies[j]] = [uniqueMovies[j], uniqueMovies[i]];
-      }
-
-      // Take the first 3 random movies
-      setMovies(uniqueMovies.slice(0, 3));
-
-    } catch (err) {
-      console.error("Failed to fetch random movies:", err);
-      setError("Failed to fetch random movies. Try again or check your connection.");
     } finally {
       setLoading(false);
     }
@@ -152,30 +162,34 @@ const App = () => {
     fetchGenres();
   }, []);
 
-  // Handle genre change: now calls fetchRandomMovies
+  // Handle genre change: now calls fetchMovies with appropriate type
   const handleGenreChange = (e) => {
     const newGenreValue = e.target.value;
 
     if (newGenreValue === 'monthly-genre-selection') {
-      setIsMonthlySelection(true);
+      setSelectedMovieType('monthly');
       const monthlyGenreName = MONTH_GENRE_MAP[currentMonthNum];
       const monthlyGenre = genres.find(g => g.name === monthlyGenreName);
 
       if (monthlyGenre) {
-        setSelectedGenreId(monthlyGenre.id); // Set the actual genre ID
-        fetchRandomMovies(monthlyGenre.id, selectedYear);
+        setSelectedGenreId(monthlyGenre.id);
+        fetchMovies('monthly', monthlyGenre.id, selectedYear);
       } else {
         setError(`Could not find genre ID for month ${currentMonthNum} (${monthlyGenreName}).`);
         setMovies([]);
-        setSelectedGenreId(''); // Clear selection if not found
+        setSelectedGenreId('');
       }
+    } else if (newGenreValue === 'upcoming-movies') { // Handle new "Upcoming" selection
+      setSelectedMovieType('upcoming');
+      setSelectedGenreId(''); // Clear genre ID as upcoming doesn't use it
+      fetchMovies('upcoming', '', selectedYear); // Call fetchMovies for upcoming
     } else {
-      setIsMonthlySelection(false);
+      setSelectedMovieType('genre');
       setSelectedGenreId(newGenreValue);
-      if (newGenreValue) { // Only randomize if a genre is actually selected (not the "Select a Genre" option)
-        fetchRandomMovies(newGenreValue, selectedYear); // Pass selectedYear
+      if (newGenreValue) {
+        fetchMovies('genre', newGenreValue, selectedYear);
       } else {
-        setMovies([]); // Clear movies if "Select a Genre" is chosen
+        setMovies([]);
       }
     }
   };
@@ -184,16 +198,20 @@ const App = () => {
   const handleYearChange = (e) => {
     const year = e.target.value;
     setSelectedYear(year);
-    // If a genre is already selected, re-randomize with the new year
-    // If "Based on Month" is active, re-evaluate the genre for the current month with the new year
-    if (isMonthlySelection) {
+
+    // Re-fetch movies based on current type and new year
+    if (selectedMovieType === 'monthly') {
         const monthlyGenreName = MONTH_GENRE_MAP[currentMonthNum];
         const monthlyGenre = genres.find(g => g.name === monthlyGenreName);
         if (monthlyGenre) {
-            fetchRandomMovies(monthlyGenre.id, year);
+            fetchMovies('monthly', monthlyGenre.id, year);
         }
-    } else if (selectedGenreId) {
-      fetchRandomMovies(selectedGenreId, year);
+    } else if (selectedMovieType === 'upcoming') {
+        fetchMovies('upcoming', '', year); // Fetch upcoming without genreId
+    } else if (selectedMovieType === 'genre' && selectedGenreId) {
+      fetchMovies('genre', selectedGenreId, year);
+    } else {
+        setMovies([]); // Clear movies if no valid selection is active
     }
   };
 
@@ -222,12 +240,14 @@ const App = () => {
           <select
             id="genre-select"
             className="block w-full p-3 border border-gray-600 rounded-lg shadow-md bg-gray-700 text-white focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 ease-in-out"
-            value={isMonthlySelection ? 'monthly-genre-selection' : selectedGenreId} // Reflect monthly selection
+            // Dynamically set value based on selectedMovieType
+            value={selectedMovieType === 'monthly' ? 'monthly-genre-selection' : (selectedMovieType === 'upcoming' ? 'upcoming-movies' : selectedGenreId)}
             onChange={handleGenreChange}
             disabled={loading || error}
           >
             <option value="">Select a Genre</option>
             <option value="monthly-genre-selection">Based on Month</option> {/* New option */}
+            <option value="upcoming-movies">Upcoming</option> {/* New Upcoming option */}
             {genres.map((genre) => (
               <option key={genre.id} value={genre.id}>
                 {genre.name}
@@ -245,7 +265,7 @@ const App = () => {
             className="block w-full p-3 border border-gray-600 rounded-lg shadow-md bg-gray-700 text-white focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 ease-in-out"
             value={selectedYear}
             onChange={handleYearChange}
-            disabled={loading || error}
+            disabled={loading || error || selectedMovieType === 'upcoming'} // Disable year filter for Upcoming
           >
             <option value="">All Years</option> {/* Option to show all years */}
             {years.filter(year => year !== '').map((year) => ( // Filter out the empty string for the loop
@@ -267,9 +287,9 @@ const App = () => {
         </p>
       )}
 
-      {!loading && !error && movies.length === 0 && selectedGenreId && (
+      {!loading && !error && movies.length === 0 && (selectedGenreId || selectedMovieType === 'upcoming') && (
         <p className="text-center text-gray-400 text-xl col-span-full">
-          No movies found for this genre and year. Try another selection or click "Randomize Movies"!
+          No movies found for this selection. Try another!
         </p>
       )}
 
@@ -316,9 +336,10 @@ const App = () => {
         )}
       </div>
 
-      {!loading && !error && selectedGenreId && ( // Only show randomize button if a genre is selected
+      {/* Hide Randomize Movies button when Upcoming is selected */}
+      {!loading && !error && (selectedGenreId || selectedMovieType === 'upcoming') && selectedMovieType !== 'upcoming' && (
         <button
-          onClick={() => fetchRandomMovies(selectedGenreId, selectedYear)} // Pass selectedYear
+          onClick={() => fetchMovies(selectedMovieType, selectedGenreId, selectedYear)} // Pass current type and ID/year
           className="mt-8 mx-auto bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75"
         >
           Randomize Movies
