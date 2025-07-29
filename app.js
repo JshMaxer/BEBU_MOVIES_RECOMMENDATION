@@ -2,7 +2,7 @@
 // because of the CDN scripts in index.html. No 'import' statements needed here.
 
 const TMDB_API_KEY = '34d1a1bd431dc14e9243d534340f360b'; // Your TMDB API Key
-const TMDB_READ_ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNGQxYTFiZDQzMWRjMTRlOTI0M2Q1MzQzNDBmMzYwYiIsIm5iZiI6MTY5Njk5ODg5Mi4wNzksInN1YiI6IjY1MjYyNjExMDcyMTY2NDViNmRhZmU2NyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.dMDHJ8cb6eWhumAkM8nt_cArUkaLkZZbHJi7R4eI0i8'; // Your TMDB API Read Access Token
+const TMDB_READ_ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNGQxYTFiZDQzMWRjMTRlOTI0M2Q1MzQzNDBmMzYwYiIsIm5iZiI6MTY5Njk5ODg5Mi4wNzksInN1YiI6IjY1MjYyNjExMDcyMTY2NDViNmRhZmU2NyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.dMDHJ8cb6eWhumAkM88nt_cArUkaLkZZbHJi7R4eI0i8'; // Your TMDB API Read Access Token
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
@@ -51,6 +51,7 @@ const fetchGenresApi = async () => {
 };
 
 // Modified fetchMoviesApi to correctly handle startYear/endYear for 'upcoming'
+// Now always returns data.results for consistency
 const fetchMoviesApi = async (type, genreId, startYear, endYear, page = 1) => {
   let apiUrl = '';
   let yearQueryParam = '';
@@ -85,6 +86,7 @@ const fetchMoviesApi = async (type, genreId, startYear, endYear, page = 1) => {
       headers: tmdbHeaders,
     });
 
+
     if (!popularResponse.ok || !topRatedResponse.ok) {
       throw new Error(`HTTP error! One or both fetches failed.`);
     }
@@ -104,15 +106,12 @@ const fetchMoviesApi = async (type, genreId, startYear, endYear, page = 1) => {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
   const data = await response.json();
-  return data; // Return full data to get total_pages for pagination
+  return data; // Return full data object to get total_pages
 };
 
 // --- Components ---
-const MovieCard = ({ movie }) => {
-  const handleTellMeMore = (movieId) => {
-    window.open(`${TMDB_MOVIE_DETAIL_BASE_URL}${movieId}`, '_blank');
-  };
-
+// MovieCard now accepts handleTellMeMore as a prop
+const MovieCard = ({ movie, handleTellMeMore }) => {
   return (
     <div
       key={movie.id}
@@ -143,7 +142,7 @@ const MovieCard = ({ movie }) => {
           </span>
         </div>
         <button
-          onClick={() => handleTellMeMore(movie.id)}
+          onClick={() => handleTellMeMore(movie.id)} // Call the prop function
           className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
         >
           Tell Me More!
@@ -383,6 +382,12 @@ const App = () => {
     getMovies('upcoming', '', null, null, pageNumber);
   };
 
+  // Moved handleTellMeMore to App component and added console.log for debugging
+  const handleTellMeMore = (movieId) => {
+    console.log("Attempting to open movie details for ID:", movieId);
+    window.open(`${TMDB_MOVIE_DETAIL_BASE_URL}${movieId}`, '_blank');
+  };
+
   // Helper to render pagination buttons
   const renderPaginationButtons = () => {
     const pages = [];
@@ -443,7 +448,7 @@ const App = () => {
   };
 
   return (
-    // Changed max-w-5xl to max-w-7xl for a wider content area
+    // Max-w-7xl for the main content area for breathability
     <div className="p-4 sm:p-8 flex flex-col items-center max-w-7xl mx-auto">
       <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-4 text-center drop_shadow-lg">
         BEBU’S MOVIES RECOMMENDATION
@@ -494,42 +499,7 @@ const App = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
         {!loading && !error && movies.length > 0 && (
           movies.map((movie) => (
-            <div
-              key={movie.id}
-              className="bg-gray-800 rounded-xl shadow-2xl overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-purple-500/40 border border-gray-700"
-            >
-              <img
-                src={movie.poster_path ? `${TMDB_IMAGE_BASE_URL}${movie.poster_path}` : `https://placehold.co/500x750/333333/FFFFFF?text=No+Image`}
-                alt={movie.title}
-                className="w-full h-64 object-cover object-center rounded-t-xl"
-                onError={(e) => { e.target.onerror = null; e.target.src = `https://placehold.co/500x750/333333/FFFFFF?text=No+Image`; }}
-              />
-              <div className="p-6">
-                <h2 className="text-2xl font-bold text-purple-300 mb-2">
-                  {movie.title}
-                </h2>
-                <p className="text-gray-400 text-sm mb-4 line-clamp-3">
-                  {movie.overview}
-                </p>
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-yellow-400 font-semibold text-lg flex items-center">
-                    <svg className="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.538 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.783.57-1.838-.197-1.538-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.929 8.72c-.783-.57-.381-1.81.588-1.81h3.462a1 1 0 00.95-.69l1.07-3.292z"></path>
-                    </svg>
-                    {movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'} / 10
-                  </span>
-                  <span className="text-gray-400 text-sm">
-                    Released: {movie.release_date || 'N/A'}
-                  </span>
-                </div>
-                <button
-                  onClick={() => handleTellMeMore(movie.id)}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transform transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
-                >
-                  Tell Me More!
-                </button>
-              </div>
-            </div>
+            <MovieCard key={movie.id} movie={movie} handleTellMeMore={handleTellMeMore} />
           ))
         )}
       </div>
