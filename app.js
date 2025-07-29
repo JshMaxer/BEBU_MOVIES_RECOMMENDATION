@@ -50,15 +50,17 @@ const fetchGenresApi = async () => {
   return data.genres;
 };
 
+// Modified fetchMoviesApi to correctly handle startYear/endYear for 'upcoming'
 const fetchMoviesApi = async (type, genreId, startYear, endYear, page = 1) => {
   let apiUrl = '';
   let yearQueryParam = '';
 
-  if (startYear && endYear) {
+  // Only apply year range if not 'upcoming' type
+  if (type !== 'upcoming' && startYear && endYear) {
       yearQueryParam = `&primary_release_date.gte=${startYear}-01-01&primary_release_date.lte=${endYear}-12-31`;
-  } else if (startYear) {
+  } else if (type !== 'upcoming' && startYear) {
       yearQueryParam = `&primary_release_date.gte=${startYear}-01-01`;
-  } else if (endYear) {
+  } else if (type !== 'upcoming' && endYear) {
       yearQueryParam = `&primary_release_date.lte=${endYear}-12-31`;
   }
 
@@ -69,7 +71,9 @@ const fetchMoviesApi = async (type, genreId, startYear, endYear, page = 1) => {
     const dayToday = String(today.getDate()).padStart(2, '0');
     const formattedToday = `${yearToday}-${monthToday}-${dayToday}`;
 
-    apiUrl = `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&primary_release_date.gte=${formattedToday}${yearQueryParam}&page=${page}`;
+    // For upcoming, we only care about release date from today onwards.
+    // yearQueryParam is intentionally NOT included here for 'upcoming'
+    apiUrl = `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&primary_release_date.gte=${formattedToday}&page=${page}`;
   } else if (type === 'genre' || type === 'monthly') {
     if (!genreId) {
         throw new Error('Genre ID is required for genre or monthly movie types.');
@@ -100,7 +104,7 @@ const fetchMoviesApi = async (type, genreId, startYear, endYear, page = 1) => {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
   const data = await response.json();
-  return data.results;
+  return data; // Return full data to get total_pages for pagination
 };
 
 // --- Components ---
@@ -236,7 +240,8 @@ const App = () => {
   const [startYear, setStartYear] = useState(1920);
   const [endYear, setEndYear] = useState(new Date().getFullYear());
   const [selectedMovieType, setSelectedMovieType] = useState('monthly');
-  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [upcomingPage, setUpcomingPage] = useState(1); // Current page for upcoming movies
+  const [totalPages, setTotalPages] = useState(1); // Total pages for upcoming movies
 
   const currentMonthNum = new Date().getMonth() + 1;
   const currentMonthName = new Date().toLocaleString('en-US', { month: 'long' });
@@ -245,24 +250,19 @@ const App = () => {
   const minPossibleYear = 1920;
   const maxPossibleYear = new Date().getFullYear();
 
-  const getMovies = async (type, genreId, currentStartYear, currentEndYear, page = 1, append = false) => {
+  const getMovies = async (type, genreId, currentStartYear, currentEndYear, page = 1) => {
     setLoading(true);
     setError(null);
-    if (!append) {
-      setMovies([]);
-    }
+    setMovies([]); // Always clear movies before new fetch
 
     try {
       if (type === 'upcoming') {
-        const fetchedResults = await fetchMoviesApi(type, genreId, currentStartYear, currentEndYear, page);
-        if (append) {
-          setMovies(prevMovies => [...prevMovies, ...fetchedResults]);
-        } else {
-          setMovies(fetchedResults);
-        }
+        const data = await fetchMoviesApi(type, genreId, null, null, page); // fetchMoviesApi returns full data object
+        setMovies(data.results.slice(0, 6)); // Display only 6 cards
+        setTotalPages(data.total_pages); // Update total pages for pagination
       } else {
         const fetchedResults = await fetchMoviesApi(type, genreId, currentStartYear, currentEndYear);
-        setMovies(shuffleArray(fetchedResults).slice(0, 3));
+        setMovies(shuffleArray(fetchedResults).slice(0, 3)); // Still 3 for genre/monthly
       }
     } catch (err) {
       console.error("Failed to fetch movies:", err);
@@ -314,7 +314,7 @@ const App = () => {
 
   const handleGenreChange = (e) => {
     const newGenreValue = e.target.value;
-    setUpcomingPage(1);
+    setUpcomingPage(1); // Reset page to 1 when changing genre type
 
     if (newGenreValue === 'monthly-genre-selection') {
       setSelectedMovieType('monthly');
@@ -330,9 +330,9 @@ const App = () => {
     } else if (newGenreValue === 'upcoming-movies') {
       setSelectedMovieType('upcoming');
       setSelectedGenreId('');
-      setStartYear(maxPossibleYear);
-      setEndYear(maxPossibleYear);
-      getMovies('upcoming', '', maxPossibleYear, maxPossibleYear, 1, false);
+      setStartYear(maxPossibleYear); // Reset slider visuals for upcoming
+      setEndYear(maxPossibleYear); // Reset slider visuals for upcoming
+      getMovies('upcoming', '', null, null, 1); // Fetch first page of upcoming
     } else {
       setSelectedMovieType('genre');
       setSelectedGenreId(newGenreValue);
@@ -377,20 +377,69 @@ const App = () => {
     }
   };
 
-  const handleLoadMoreUpcoming = () => {
-    setUpcomingPage(prevPage => {
-      const nextPage = prevPage + 1;
-      getMovies('upcoming', '', maxPossibleYear, maxPossibleYear, nextPage, true);
-      return nextPage;
-    });
+  // New handler for page number clicks
+  const handlePageChange = (pageNumber) => {
+    setUpcomingPage(pageNumber);
+    getMovies('upcoming', '', null, null, pageNumber);
   };
 
-  const handleTellMeMore = (movieId) => {
-    window.open(`${TMDB_MOVIE_DETAIL_BASE_URL}${movieId}`, '_blank');
+  // Helper to render pagination buttons
+  const renderPaginationButtons = () => {
+    const pages = [];
+    // Limit to showing a reasonable number of pages around the current page
+    const maxButtons = 5;
+    let start = Math.max(1, upcomingPage - Math.floor(maxButtons / 2));
+    let end = Math.min(totalPages, start + maxButtons - 1);
+
+    // Adjust start if end is limited by totalPages
+    if (end - start + 1 < maxButtons) {
+        start = Math.max(1, end - maxButtons + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-4 py-2 rounded-lg font-bold transition-all duration-200
+            ${upcomingPage === i
+              ? 'bg-purple-600 text-white shadow-lg'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+            }
+            focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75`}
+          disabled={loading}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    return (
+      <div className="flex justify-center items-center space-x-2 mt-8">
+        {upcomingPage > 1 && (
+          <button
+            onClick={() => handlePageChange(upcomingPage - 1)}
+            className="px-4 py-2 rounded-lg font-bold bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
+            disabled={loading}
+          >
+            Previous
+          </button>
+        )}
+        {pages}
+        {upcomingPage < totalPages && (
+          <button
+            onClick={() => handlePageChange(upcomingPage + 1)}
+            className="px-4 py-2 rounded-lg font-bold bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75"
+            disabled={loading}
+          >
+            Next
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
-    // Changed max-w-4xl to max-w-5xl for a slightly wider content area
     <div className="p-4 sm:p-8 flex flex-col items-center max-w-5xl mx-auto">
       <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-4 text-center drop_shadow-lg">
         BEBU’S MOVIES RECOMMENDATION
@@ -490,14 +539,8 @@ const App = () => {
         </button>
       )}
 
-      {!loading && !error && selectedMovieType === 'upcoming' && movies.length > 0 && (
-        <button
-          onClick={handleLoadMoreUpcoming}
-          className="mt-8 mx-auto bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg transform transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75"
-        >
-          Load More Upcoming Movies
-        </button>
-      )}
+      {/* Render pagination buttons only for 'upcoming' movies and if there's more than one page */}
+      {!loading && !error && selectedMovieType === 'upcoming' && totalPages > 1 && renderPaginationButtons()}
 
       <footer className="mt-12 text-gray-500 text-sm text-center">
         <p>
