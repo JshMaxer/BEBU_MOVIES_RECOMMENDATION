@@ -396,6 +396,9 @@ const App = () => {
         start = Math.max(1, end - maxButtons + 1);
     }
 
+    // Ensure page numbers are always positive
+    start = Math.max(1, start);
+
     for (let i = start; i <= end; i++) {
       pages.push(
         <button
@@ -440,7 +443,8 @@ const App = () => {
   };
 
   return (
-    <div className="p-4 sm:p-8 flex flex-col items-center max-w-5xl mx-auto">
+    // Changed max-w-5xl to max-w-7xl for a wider content area
+    <div className="p-4 sm:p-8 flex flex-col items-center max-w-7xl mx-auto">
       <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-4 text-center drop_shadow-lg">
         BEBU’S MOVIES RECOMMENDATION
       </h1>
