@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\OneDrive\\BACKUP\\Codeeees\\C#\\ASP.NET\\BebuMovies\\BebuMovies.csproj",
+      "projectUniqueName": "D:\\OneDrive\\BACKUP\\Codeeees\\HTML\\BMR\\BebuMovies.csproj",
       "projectName": "BebuMovies",
-      "projectPath": "D:\\OneDrive\\BACKUP\\Codeeees\\C#\\ASP.NET\\BebuMovies\\BebuMovies.csproj",
+      "projectPath": "D:\\OneDrive\\BACKUP\\Codeeees\\HTML\\BMR\\BebuMovies.csproj",
       "packagesPath": "C:\\Users\\Joshua Cambal\\.nuget\\packages\\",
-      "outputPath": "D:\\OneDrive\\BACKUP\\Codeeees\\C#\\ASP.NET\\BebuMovies\\obj\\",
+      "outputPath": "D:\\OneDrive\\BACKUP\\Codeeees\\HTML\\BMR\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
