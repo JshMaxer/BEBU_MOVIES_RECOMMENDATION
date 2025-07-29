@@ -1,0 +1,138 @@
+﻿@model BebuMovies.Models.ViewModel
+@{
+    ViewData["Title"] = "Bebu's Movie Recommendations";
+}
+
+<div class="text-center">
+    <h1 class="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-4 drop_shadow-lg">
+        BEBU’S MOVIES RECOMMENDATION
+    </h1>
+    <p class="text-lg text-gray-300 mb-8">
+        Today's month is: <span class="font-semibold text-purple-300">@Model.CurrentMonthName</span> and the genre is: <span class="font-semibold text-pink-300">@Model.CurrentMonthGenreName</span>
+    </p>
+</div>
+
+<!-- Filter Form - No longer a form element -->
+<div id="filter-controls" class="mb-8 w-full max-w-sm mx-auto space-y-4">
+    <div>
+        <label for="movieType" class="block text-lg font-medium text-gray-300 mb-2 text-center">Choose Your Vibe:</label>
+        <select id="movieType" name="movieType" class="block w-full p-3 border border-gray-600 rounded-lg shadow-md bg-gray-700 text-white focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 ease-in-out">
+            <option value="monthly" selected="@(Model.SelectedMovieType == "monthly")">Based on Month</option>
+            <option value="upcoming" selected="@(Model.SelectedMovieType == "upcoming")">Upcoming</option>
+            <option value="genre" selected="@(Model.SelectedMovieType == "genre")">By Genre</option>
+        </select>
+    </div>
+
+    <div id="genre-container" class="@(Model.SelectedMovieType == "genre" ? "" : "hidden")">
+        <label for="genreId" class="block text-lg font-medium text-gray-300 mb-2 text-center">Genre:</label>
+        <select id="genreId" name="genreId" class="block w-full p-3 border border-gray-600 rounded-lg shadow-md bg-gray-700 text-white focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 ease-in-out">
+            <option value="">Select a Genre</option>
+            @foreach (var genre in Model.Genres)
+            {
+                <option value="@genre.Id" selected="@(Model.SelectedGenreId == genre.Id)">@genre.Name</option>
+            }
+        </select>
+    </div>
+
+    <div id="year-container">
+        <label for="year" class="block text-lg font-medium text-gray-300 mb-2 text-center">Filter by Year:</label>
+        <select id="year" name="year" class="block w-full p-3 border border-gray-600 rounded-lg shadow-md bg-gray-700 text-white focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 ease-in-out" disabled="@(Model.SelectedMovieType == "upcoming")">
+            <option value="">All Years</option>
+            @foreach (var year in Model.Years)
+            {
+                <option value="@year" selected="@(Model.SelectedYear == year)">@year</option>
+            }
+        </select>
+    </div>
+</div>
+
+<!-- Display Error Message -->
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <p class="text-xl text-red-500 text-center p-4 bg-red-900 bg-opacity-30 rounded-lg border border-red-700 mx-auto max-w-md">
+        @Model.Error
+    </p>
+}
+
+<!-- Container for the movie grid. This is where the magic happens. -->
+<div id="movie-grid-container">
+    @{
+        // On the initial page load, we render the partial view directly.
+        // Subsequent updates will be loaded via JavaScript.
+        // We also pass data to the partial view to decide if the randomize button should show.
+        ViewData["ShowRandomizeButton"] = Model.SelectedMovieType != "upcoming" && Model.Movies.Any();
+    }
+    <partial name="_MovieGrid" model="Model.Movies" />
+</div>
+
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const movieTypeSelect = document.getElementById('movieType');
+            const genreContainer = document.getElementById('genre-container');
+            const genreSelect = document.getElementById('genreId');
+            const yearSelect = document.getElementById('year');
+            const gridContainer = document.getElementById('movie-grid-container');
+
+            function toggleFilters() {
+                const selectedType = movieTypeSelect.value;
+                genreContainer.classList.toggle('hidden', selectedType !== 'genre');
+                yearSelect.disabled = selectedType === 'upcoming';
+                if(selectedType === 'upcoming') {
+                    yearSelect.value = ''; // Reset year selection
+                }
+            }
+
+            async function fetchAndUpdateGrid() {
+                // Show a loading state
+                gridContainer.innerHTML = `<p class="text-xl text-purple-300 animate-pulse text-center">Loading movies, hold your horses...</p>`;
+
+                const movieType = movieTypeSelect.value;
+                const genreId = genreSelect.value;
+                const year = yearSelect.value;
+
+                // Construct the URL with query parameters
+                const url = `/Home/GetMovies?movieType=${movieType}&genreId=${genreId}&year=${year}`;
+
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.statusText}`);
+                    }
+                    const html = await response.text();
+
+                    // Update the grid with the new HTML from the partial view
+                    gridContainer.innerHTML = html;
+
+                    // Re-attach event listener to the new randomize button if it exists
+                    const randomizeButton = document.getElementById('randomize-button');
+                    if(randomizeButton) {
+                        randomizeButton.addEventListener('click', fetchAndUpdateGrid);
+                    }
+
+                } catch (error) {
+                    console.error('Failed to fetch movies:', error);
+                    gridContainer.innerHTML = `<p class="text-xl text-red-500 text-center">Oops! Something went wrong while fetching movies.</p>`;
+                }
+            }
+
+            // Add event listeners to all controls
+            movieTypeSelect.addEventListener('change', () => {
+                toggleFilters();
+                fetchAndUpdateGrid();
+            });
+            genreSelect.addEventListener('change', fetchAndUpdateGrid);
+            yearSelect.addEventListener('change', fetchAndUpdateGrid);
+
+            // Also attach to the initial randomize button
+            const initialRandomizeButton = document.getElementById('randomize-button');
+            if(initialRandomizeButton) {
+                initialRandomizeButton.addEventListener('click', fetchAndUpdateGrid);
+            }
+
+            // Initial setup on page load
+            toggleFilters();
+        });
+    </script>
+}

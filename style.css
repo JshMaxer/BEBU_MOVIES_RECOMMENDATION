@@ -1,9 +1,0 @@
-/* Google Fonts import (can also be in the HTML <head> with <link>) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
-/* Basic body font styling */
-body {
-    font-family: 'Inter', sans-serif;
-    margin: 0;
-    padding: 0;
-}
