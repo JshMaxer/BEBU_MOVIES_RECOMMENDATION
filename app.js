@@ -24,6 +24,23 @@ const MONTH_GENRE_MAP = {
   12: "Family"    // December (TMDB uses "Family" or "Animation" for Christmas-like)
 };
 
+// Month to Genre Reason mapping - NEW
+const MONTH_GENRE_REASON_MAP = {
+  1: "New year, new tech, new mind-bending realities.",
+  2: "Valentine’s season. Cupid’s on payroll.",
+  3: "Life’s warming up, emotions defrosting.",
+  4: "Spring = bloom, magic, and mythical energy.",
+  5: "Outdoorsy feels, let’s go on a wild ride.",
+  6: "Global summer movie season = boom, bang, blockbusters.",
+  7: "Midyear stress? Nah. Let’s laugh it off.",
+  8: "Summer heat + global tension = perfect suspense.",
+  9: "Fall kicks in, detective energy activated.",
+  10: "Gritty, moody, pre-Halloween edge. Mafia, heists, corruption—yum.",
+  11: "Post-Halloween, dark days, perfect for screams.",
+  12: "Holidays. All the wholesome chaos + nostalgia."
+};
+
+
 // Helper function to shuffle an array
 const shuffleArray = (array) => {
   for (let i = array.length - 1; i > 0; i--) {
@@ -245,6 +262,7 @@ const App = () => {
   const currentMonthNum = new Date().getMonth() + 1;
   const currentMonthName = new Date().toLocaleString('en-US', { month: 'long' });
   const currentMonthGenreName = MONTH_GENRE_MAP[currentMonthNum];
+  const currentMonthGenreReason = MONTH_GENRE_REASON_MAP[currentMonthNum]; // Get the reason
 
   const minPossibleYear = 1920;
   const maxPossibleYear = new Date().getFullYear();
@@ -454,8 +472,12 @@ const App = () => {
         BEBU’S MOVIES RECOMMENDATION
       </h1>
 
-      <p className="text-lg text-gray-300 mb-8 text-center">
+      <p className="text-lg text-gray-300 mb-2 text-center">
         Today's month is: <span className="font-semibold text-purple-300">{currentMonthName}</span> and the genre is: <span className="font-semibold text-pink-300">{currentMonthGenreName}</span>
+      </p>
+      {/* New line for the reason */}
+      <p className="text-md text-gray-400 mb-8 text-center italic">
+        "{currentMonthGenreReason}"
       </p>
 
       <div className="mb-8 w-full max-w-sm mx-auto space-y-4">
