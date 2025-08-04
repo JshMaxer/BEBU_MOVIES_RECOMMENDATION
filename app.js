@@ -8,20 +8,20 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const TMDB_MOVIE_DETAIL_BASE_URL = 'https://www.themoviedb.org/movie/'; // Base URL for movie details on TMDB website
 
-// Month to Genre Name mapping
+// Month to Genre Name mapping - UPDATED
 const MONTH_GENRE_MAP = {
-  1: "Adventure",   // January
+  1: "Science Fiction",   // January
   2: "Romance",     // February
   3: "Drama",       // March
-  4: "Comedy",      // April
-  5: "War",         // May
-  6: "Crime",       // June
-  7: "Fantasy",     // July
-  8: "History",     // August
-  9: "Action",      // September
-  10: "Science Fiction", // October (TMDB uses "Science Fiction")
+  4: "Fantasy",      // April
+  5: "Adventure",         // May
+  6: "Action",       // June
+  7: "Comedy",     // July
+  8: "Thriller",     // August
+  9: "Mystery",      // September
+  10: "Crime", // October
   11: "Horror",     // November
-  12: "Animation"    // December
+  12: "Family"    // December (TMDB uses "Family" or "Animation" for Christmas-like)
 };
 
 // Helper function to shuffle an array
