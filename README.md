@@ -18,20 +18,20 @@ A chill web app built to help you discover movies without doing mental gymnastic
 
 Wanna trust the vibes of the month? Here’s what genre BEBU thinks you should watch:
 
-| Month      | Genre            |
-|------------|------------------|
-| January    | Adventure        |
-| February   | Romance          |
-| March      | Drama            |
-| April      | Comedy           |
-| May        | War              |
-| June       | Crime            |
-| July       | Fantasy          |
-| August     | History          |
-| September  | Action           |
-| October    | Sci-Fi           |
-| November   | Horror           |
-| December   | Animation        |
+| Month      | Genre            | Why It Slaps Globally                                             |
+|------------|------------------|-------------------------------------------------------------------|
+| January    | Science Fiction  | New year, new tech, new mind-bending realities
+| February   | Romance          | Valentine’s season. Cupid’s on payroll
+| March      | Drama            | Life’s warming up, emotions defrosting
+| April      | Fantasy          | Spring = bloom, magic, and mythical energy
+| May        | Adventure        | Outdoorsy feels, let’s go on a wild ride
+| June       | Action           | Global summer movie season = boom, bang, blockbusters
+| July       | Comedy           | Midyear stress? Nah. Let’s laugh it off
+| August     | Thriller         | Summer heat + global tension = perfect suspense
+| September  | Mystery          | Fall kicks in, detective energy activated
+| October    | Crime            | Gritty, moody, pre-Halloween edge. Mafia, heists, corruption—yum
+| November   | Horror           | Post-Halloween, dark days, perfect for screams
+| December   | Family           | Holidays. All the wholesome chaos + nostalgia
 
 ---
 
